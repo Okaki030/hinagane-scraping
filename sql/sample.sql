@@ -1,0 +1,1 @@
+SELECT article.name, member.name from article inner join article_member_link on article.id=article_member_link.article_id inner join member on article_member_link.member_id=member.id order by article.id;
