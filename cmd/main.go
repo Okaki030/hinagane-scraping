@@ -20,8 +20,8 @@ func main() {
 
 	// 依存性注入
 	articlePersistence := persistence.NewArticlePersistence(db)
-	memberCountPersistence := persistence.NewMemberCountPersistence()
-	wordCountPersistence := persistence.NewWordCountPersistence()
+	memberCountPersistence := persistence.NewMemberCountPersistence(db)
+	wordCountPersistence := persistence.NewWordCountPersistence(db)
 	articleUseCase := usecase.NewArticleUseCase(articlePersistence, memberCountPersistence, wordCountPersistence)
 
 	err = articleUseCase.CollectArticle()
