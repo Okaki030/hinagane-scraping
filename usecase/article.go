@@ -37,21 +37,21 @@ func (au articleUseCase) CollectArticle() error {
 	var ars, articles []model.Article
 
 	// 日向坂まとめ速報からスクレイピング
-	ars, err = au.ScrapingMatomesokuhou()
+	ars, err = ScrapingMatomesokuhou()
 	if err != nil {
 		return err
 	}
 	articles = append(articles, ars...)
 
 	// まとめキングダムからスクレイピング
-	ars, err = au.ScrapingMatomekingdom()
+	ars, err = ScrapingMatomekingdom()
 	if err != nil {
 		return err
 	}
 	articles = append(articles, ars...)
 
 	// 日向速報からスクレイピング
-	ars, err = au.ScrapingHinatasokuhou()
+	ars, err = ScrapingHinatasokuhou()
 	if err != nil {
 		return err
 	}
@@ -111,8 +111,8 @@ func (au articleUseCase) CollectArticle() error {
 	return nil
 }
 
-// scrapingMatomesokuhou は日向坂まとめ速報の記事をスクレイピングするメソッド
-func (au articleUseCase) ScrapingMatomesokuhou() ([]model.Article, error) {
+// scrapingMatomesokuhou は日向坂まとめ速報の記事をスクレイピングする関数
+func ScrapingMatomesokuhou() ([]model.Article, error) {
 
 	targetUrl := "http://hiraganakeyaki.blog.jp/"
 	doc, err := goquery.NewDocument(targetUrl)
@@ -150,8 +150,8 @@ func (au articleUseCase) ScrapingMatomesokuhou() ([]model.Article, error) {
 	return articles, nil
 }
 
-// scrapingMatomesokuhou は日向坂まとめキングダムの記事をスクレイピングするメソッド
-func (au articleUseCase) ScrapingMatomekingdom() ([]model.Article, error) {
+// scrapingMatomesokuhou は日向坂まとめキングダムの記事をスクレイピングする関数
+func ScrapingMatomekingdom() ([]model.Article, error) {
 
 	targetUrl := "http://hiragana46matome.com/"
 	doc, err := goquery.NewDocument(targetUrl)
@@ -188,8 +188,8 @@ func (au articleUseCase) ScrapingMatomekingdom() ([]model.Article, error) {
 	return articles, nil
 }
 
-// scrapingMatomesokuhou は日向速報の記事をスクレイピングするメソッド
-func (au articleUseCase) ScrapingHinatasokuhou() ([]model.Article, error) {
+// scrapingMatomesokuhou は日向速報の記事をスクレイピングする関数
+func ScrapingHinatasokuhou() ([]model.Article, error) {
 
 	targetUrl := "http://hinatasoku.blog.jp/"
 	doc, err := goquery.NewDocument(targetUrl)
