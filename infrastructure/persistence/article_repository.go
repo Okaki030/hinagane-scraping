@@ -9,22 +9,26 @@ import (
 )
 
 // articlePersistence はまとめ記事の処理を扱うための構造体
-type articlePersistence struct{}
+type articlePersistence struct {
+	DB *sql.DB
+}
 
 // NewArticlePersistence はarticlePersistenceのインスタンスを作成するための関数
-func NewArticlePersistence() repository.ArticleRepository {
-	return &articlePersistence{}
+func NewArticlePersistence(db *sql.DB) repository.ArticleRepository {
+	return &articlePersistence{
+		DB: db,
+	}
 }
 
 // InsertArticle は1つのまとめ記事を保存するためのメソッド
-func (ap articlePersistence) InsertArticle(db *sql.DB, article model.Article) (int, error) {
+func (ap articlePersistence) InsertArticle(article model.Article) (int, error) {
 
 	fmt.Println("---Insertarticle start---")
 
 	var err error
 
 	// 記事をdbに追加
-	res, err := db.Exec(`
+	res, err := ap.DB.Exec(`
 		INSERT INTO 
 		article (name,url,date_time,site_id) 
 		VALUES (?,?,now(),?)`, article.Name, article.Url, article.SiteId)
@@ -43,20 +47,20 @@ func (ap articlePersistence) InsertArticle(db *sql.DB, article model.Article) (i
 }
 
 // InsertMemberLinkToArticle は記事ごとのメンバーカテゴリを保存するためのメソッド
-func (ap articlePersistence) InsertMemberLinkToArticle(db *sql.DB, memberName string, articleId int) error {
+func (ap articlePersistence) InsertMemberLinkToArticle(memberName string, articleId int) error {
 
 	fmt.Println("Insertmembercategory start")
 
 	var memberId int
 
 	// メンバー名からメンバーidを取得
-	row := db.QueryRow(`SELECT id FROM member WHERE name=?`, memberName)
+	row := ap.DB.QueryRow(`SELECT id FROM member WHERE name=?`, memberName)
 	_ = row.Scan(&(memberId))
 
 	// 記事ごとにカテゴリ(メンバー名)を格納
 	// TODO:1カテゴリ目でメンバーを取得し、2カテゴリ名で違った場合重複で登録使用しエラーを吐く
 	if memberId != 0 {
-		_, err := db.Exec(`
+		_, err := ap.DB.Exec(`
 			INSERT INTO 
 			article_member_link (article_id, member_id) 
 			VALUES (?,?)`, articleId, memberId)
@@ -69,10 +73,10 @@ func (ap articlePersistence) InsertMemberLinkToArticle(db *sql.DB, memberName st
 }
 
 // InsertWord は単語をdbに保存するメソッド
-func (ap articlePersistence) InsertWord(db *sql.DB, word string) (int, error) {
+func (ap articlePersistence) InsertWord(word string) (int, error) {
 
 	// 固有名詞をwordテーブルに登録
-	res, err := db.Exec(`
+	res, err := ap.DB.Exec(`
 		INSERT INTO word (name) 
 		SELECT ? FROM dual 
 		WHERE NOT EXISTS(SELECT * FROM word WHERE name=?);`, word, word)
@@ -91,14 +95,14 @@ func (ap articlePersistence) InsertWord(db *sql.DB, word string) (int, error) {
 }
 
 // InsertWordLinkToArticle は記事ごとのワードを保存するためのメソッド
-func (ap articlePersistence) InsertWordLinkToArticle(db *sql.DB, articleId int, wordId int) error {
+func (ap articlePersistence) InsertWordLinkToArticle(articleId int, wordId int) error {
 
 	fmt.Println("Insertword start")
 
 	// 記事ごとにカテゴリ(メンバー名)を格納
 	// TODO:1カテゴリ目でメンバーを取得し、2カテゴリ名で違った場合重複で登録使用しエラーを吐く
 	if wordId != 0 {
-		_, err := db.Exec(`
+		_, err := ap.DB.Exec(`
 			INSERT INTO 
 			article_word_link (article_id, word_id) 
 			VALUES (?,?)`, articleId, wordId)
