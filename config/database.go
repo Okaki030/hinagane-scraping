@@ -2,8 +2,6 @@ package config
 
 import (
 	"database/sql"
-	"log"
-
 	// _ "github.vom/liv/pq"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -42,7 +40,6 @@ func Connect() (*sql.DB, error) {
 		// var config Config
 		// _, err = toml.DecodeFile(configName, &config)
 		// if err != nil {
-		// 	log.Println(err)
 		// 	return nil, err
 		// }
 
@@ -51,7 +48,6 @@ func Connect() (*sql.DB, error) {
 		datasourceName := "root:root@tcp(mysql:3306)/hinagane_db?parseTime=true&loc=Asia%2FTokyo"
 		DB, err = sql.Open("mysql", datasourceName)
 		if err != nil {
-			log.Println(err)
 			return nil, err
 		}
 	}
