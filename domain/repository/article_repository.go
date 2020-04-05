@@ -9,5 +9,5 @@ type ArticleRepository interface {
 	InsertArticle(model.Article) (int, error)
 	InsertMemberLinkToArticle(string, int) error
 	InsertWord(string) (int, error)
-	InsertWordLinkToArticle(int, int) error
+	InsertWordLinkToArticle(string, int) error
 }

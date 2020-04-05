@@ -1,13 +1,11 @@
 package usecase
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/Okaki030/hinagane-scraping/domain/model"
 	"github.com/Okaki030/hinagane-scraping/domain/repository"
 	"github.com/PuerkitoBio/goquery"
-	"github.com/kr/pretty"
 	"github.com/shogo82148/go-mecab"
 )
 
@@ -82,24 +80,32 @@ func (au articleUseCase) CollectArticle() error {
 		}
 		articles[i].Words = append(articles[i].Words, words...)
 
-		pretty.Println("articles[i]", articles[i])
-
 		// 単語をdbに登録し記事に単語を紐付け
 		for _, word := range articles[i].Words {
 
 			// 単語をdbに登録
-			lastWordId, err := au.articleRepository.InsertWord(word)
+			_, err := au.articleRepository.InsertWord(word)
 			if err != nil {
 				return err
 			}
 
 			// 記事に単語を紐付け
-			err = au.articleRepository.InsertWordLinkToArticle(lastArticleId, lastWordId)
+			err = au.articleRepository.InsertWordLinkToArticle(word, lastArticleId)
 			if err != nil {
 				return err
 			}
 		}
+	}
 
+	// 直近3日間のまとめ記事へのメンバーの出現回数をカウント
+	err = au.memberCountRepository.InsertMemberCountInThreeDays()
+	if err != nil {
+		return nil
+	}
+
+	err = au.wordCountRepository.InsertWordCountInThreeDays()
+	if err != nil {
+		return nil
 	}
 
 	return nil
@@ -107,8 +113,6 @@ func (au articleUseCase) CollectArticle() error {
 
 // scrapingMatomesokuhou は日向坂まとめ速報の記事をスクレイピングするメソッド
 func (au articleUseCase) ScrapingMatomesokuhou() ([]model.Article, error) {
-
-	fmt.Println("---scraping matomesokuhou start---")
 
 	targetUrl := "http://hiraganakeyaki.blog.jp/"
 	doc, err := goquery.NewDocument(targetUrl)
@@ -149,8 +153,6 @@ func (au articleUseCase) ScrapingMatomesokuhou() ([]model.Article, error) {
 // scrapingMatomesokuhou は日向坂まとめキングダムの記事をスクレイピングするメソッド
 func (au articleUseCase) ScrapingMatomekingdom() ([]model.Article, error) {
 
-	fmt.Println("---scraping matomekingdom start---")
-
 	targetUrl := "http://hiragana46matome.com/"
 	doc, err := goquery.NewDocument(targetUrl)
 	if err != nil {
@@ -188,8 +190,6 @@ func (au articleUseCase) ScrapingMatomekingdom() ([]model.Article, error) {
 
 // scrapingMatomesokuhou は日向速報の記事をスクレイピングするメソッド
 func (au articleUseCase) ScrapingHinatasokuhou() ([]model.Article, error) {
-
-	fmt.Println("---scraping hinatasokuhou start---")
 
 	targetUrl := "http://hinatasoku.blog.jp/"
 	doc, err := goquery.NewDocument(targetUrl)
