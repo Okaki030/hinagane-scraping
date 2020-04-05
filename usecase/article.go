@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Okaki030/hinagane-scraping/config"
 	"github.com/Okaki030/hinagane-scraping/domain/model"
 	"github.com/Okaki030/hinagane-scraping/domain/repository"
 	"github.com/PuerkitoBio/goquery"
@@ -39,13 +38,6 @@ func (au articleUseCase) CollectArticle() error {
 	var err error
 	var ars, articles []model.Article
 
-	// db connect
-	db, err := config.Connect()
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
 	// 日向坂まとめ速報からスクレイピング
 	ars, err = au.ScrapingMatomesokuhou()
 	if err != nil {
@@ -70,14 +62,14 @@ func (au articleUseCase) CollectArticle() error {
 	for i, _ := range articles {
 
 		// まとめ記事をdbに登録
-		lastArticleId, err := au.articleRepository.InsertArticle(db, articles[i])
+		lastArticleId, err := au.articleRepository.InsertArticle(articles[i])
 		if err != nil {
 			return err
 		}
 
 		// 記事にメンバーカテゴリを紐付け
 		for _, memberName := range articles[i].MemberNames {
-			err = au.articleRepository.InsertMemberLinkToArticle(db, memberName, lastArticleId)
+			err = au.articleRepository.InsertMemberLinkToArticle(memberName, lastArticleId)
 			if err != nil {
 				return err
 			}
@@ -96,13 +88,13 @@ func (au articleUseCase) CollectArticle() error {
 		for _, word := range articles[i].Words {
 
 			// 単語をdbに登録
-			lastWordId, err := au.articleRepository.InsertWord(db, word)
+			lastWordId, err := au.articleRepository.InsertWord(word)
 			if err != nil {
 				return err
 			}
 
 			// 記事に単語を紐付け
-			err = au.articleRepository.InsertWordLinkToArticle(db, lastArticleId, lastWordId)
+			err = au.articleRepository.InsertWordLinkToArticle(lastArticleId, lastWordId)
 			if err != nil {
 				return err
 			}
