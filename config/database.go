@@ -20,7 +20,7 @@ type DBConfig struct {
 
 var DB *sql.DB
 
-func Connect() (*sql.DB, error) {
+func ConnectDB() (*sql.DB, error) {
 
 	if DB == nil {
 

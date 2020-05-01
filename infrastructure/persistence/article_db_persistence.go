@@ -8,19 +8,19 @@ import (
 )
 
 // articlePersistence はまとめ記事の処理を扱うための構造体
-type articlePersistence struct {
+type articleDBPersistence struct {
 	DB *sql.DB
 }
 
 // NewArticlePersistence はarticlePersistenceのインスタンスを作成するための関数
-func NewArticlePersistence(db *sql.DB) repository.ArticleRepository {
-	return &articlePersistence{
+func NewArticleDBPersistence(db *sql.DB) repository.ArticleRepository {
+	return &articleDBPersistence{
 		DB: db,
 	}
 }
 
 // InsertArticle は1つのまとめ記事を保存するためのメソッド
-func (ap articlePersistence) InsertArticle(article model.Article) (int, error) {
+func (ap articleDBPersistence) InsertArticle(article model.Article) (int, error) {
 
 	var err error
 
@@ -42,7 +42,7 @@ func (ap articlePersistence) InsertArticle(article model.Article) (int, error) {
 }
 
 // InsertMemberLinkToArticle は記事ごとのメンバーカテゴリを保存するためのメソッド
-func (ap articlePersistence) InsertMemberLinkToArticle(memberName string, articleId int) error {
+func (ap articleDBPersistence) InsertMemberLinkToArticle(memberName string, articleId int) error {
 
 	var memberId int
 
@@ -66,7 +66,7 @@ func (ap articlePersistence) InsertMemberLinkToArticle(memberName string, articl
 }
 
 // InsertWord は単語をdbに保存するメソッド
-func (ap articlePersistence) InsertWord(word string) (int, error) {
+func (ap articleDBPersistence) InsertWord(word string) (int, error) {
 
 	// 固有名詞をwordテーブルに登録
 	res, err := ap.DB.Exec(`
@@ -86,7 +86,7 @@ func (ap articlePersistence) InsertWord(word string) (int, error) {
 }
 
 // InsertWordLinkToArticle は記事ごとのワードを保存するためのメソッド
-func (ap articlePersistence) InsertWordLinkToArticle(word string, articleId int) error {
+func (ap articleDBPersistence) InsertWordLinkToArticle(word string, articleId int) error {
 
 	var wordId int
 

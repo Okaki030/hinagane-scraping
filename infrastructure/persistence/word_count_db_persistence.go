@@ -7,19 +7,19 @@ import (
 )
 
 // wordCountPresistence はまとめ記事のワードの出現回数をカウントするための構造体
-type wordCountPresistence struct {
+type wordCountDBPresistence struct {
 	DB *sql.DB
 }
 
 // NewWordCountPersistence はwordCountPresistence型のインスタンスを生成するための関数
-func NewWordCountPersistence(db *sql.DB) repository.WordCountRepository {
-	return &wordCountPresistence{
+func NewWordCountDBPersistence(db *sql.DB) repository.WordCountRepository {
+	return &wordCountDBPresistence{
 		DB: db,
 	}
 }
 
 // InsertWordCountInThreeDays は直近3日間のまとめ記事へのワードの出現回数をカウントするためのメソッド
-func (wcp wordCountPresistence) InsertWordCountInThreeDays() error {
+func (wcp wordCountDBPresistence) InsertWordCountInThreeDays() error {
 
 	var wordCnt, appearCnt int
 	var row *sql.Row

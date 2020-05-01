@@ -7,19 +7,19 @@ import (
 )
 
 // memberCountPresistence はまとめ記事のメンバーの出現回数をカウントするための構造体
-type memberCountPresistence struct {
+type memberCountDBPresistence struct {
 	DB *sql.DB
 }
 
 // NewMemberCountPersistence はmemberCountPresistence型のインスタンスを生成するための関数
-func NewMemberCountPersistence(db *sql.DB) repository.MemberCountRepository {
-	return &memberCountPresistence{
+func NewMemberCountDBPersistence(db *sql.DB) repository.MemberCountRepository {
+	return &memberCountDBPresistence{
 		DB: db,
 	}
 }
 
 // InsertMemberCountInThreeDays は直近3日間のまとめ記事へのメンバーの出現回数をカウントするためのメソッド
-func (mcp memberCountPresistence) InsertMemberCountInThreeDays() error {
+func (mcp memberCountDBPresistence) InsertMemberCountInThreeDays() error {
 
 	var memberCnt, appearCnt int
 	var row *sql.Row

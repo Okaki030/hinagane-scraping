@@ -12,17 +12,29 @@ import (
 func main() {
 
 	// db connect
-	db, err := config.Connect()
+	db, err := config.ConnectDB()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
 	// 依存性注入
-	articlePersistence := persistence.NewArticlePersistence(db)
-	memberCountPersistence := persistence.NewMemberCountPersistence(db)
-	wordCountPersistence := persistence.NewWordCountPersistence(db)
+	articlePersistence := persistence.NewArticleDBPersistence(db)
+	memberCountPersistence := persistence.NewMemberCountDBPersistence(db)
+	wordCountPersistence := persistence.NewWordCountDBPersistence(db)
 	articleUseCase := usecase.NewArticleUseCase(articlePersistence, memberCountPersistence, wordCountPersistence)
+
+	// // s3 connect
+	// sess, err := config.ConnectS3()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// // 依存性注入
+	// articlePersistence := persistence.NewArticleS3Persistence(sess)
+	// memberCountPersistence := persistence.NewMemberCountS3Persistence(sess)
+	// wordCountPersistence := persistence.NewWordCountS3Persistence(sess)
+	// articleUseCase := usecase.NewArticleUseCase(articlePersistence, memberCountPersistence, wordCountPersistence)
 
 	err = articleUseCase.CollectArticle()
 	if err != nil {
