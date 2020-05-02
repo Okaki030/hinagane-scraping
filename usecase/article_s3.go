@@ -67,13 +67,31 @@ func (au articleS3UseCase) CollectArticle() error {
 	// 直近3日間のまとめ記事へのメンバーの出現回数をカウント
 	err = au.memberCountRepository.InsertMemberCountInThreeDays()
 	if err != nil {
-		return nil
+		return err
 	}
 
 	// メンバーカウントcsvをアップロード
 	err = au.memberCountRepository.UploadCSV()
 	if err != nil {
-		return nil
+		return err
+	}
+
+	// ワードカウントcsvを取得
+	err = au.wordCountRepository.DownloadCSV()
+	if err != nil {
+		return err
+	}
+
+	// 直近3日間のまとめ記事への単語の出現回数をカウント
+	err = au.wordCountRepository.InsertWordCountInThreeDays()
+	if err != nil {
+		return err
+	}
+
+	// メンバーカウントcsvをアップロード
+	err = au.wordCountRepository.UploadCSV()
+	if err != nil {
+		return err
 	}
 
 	return nil
