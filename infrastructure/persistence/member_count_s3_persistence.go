@@ -38,7 +38,7 @@ func (mcp memberCountS3Presistence) InsertMemberCountInThreeDays() error {
 	// メンバー名を取得
 	var memberStr string
 	objectKey := "./data/member/member.csv"
-	sql := "SELECT * FROM S3Object"
+	sql := "SELECT name FROM S3Object"
 	memberStr, err = mcp.SelectS3CSV(objectKey, sql)
 	if err != nil {
 		return err
