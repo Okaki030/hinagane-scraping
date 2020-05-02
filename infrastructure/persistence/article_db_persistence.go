@@ -2,6 +2,11 @@ package persistence
 
 import (
 	"database/sql"
+	"os"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/Okaki030/hinagane-scraping/domain/model"
 	"github.com/Okaki030/hinagane-scraping/domain/repository"
@@ -9,13 +14,15 @@ import (
 
 // articlePersistence はまとめ記事の処理を扱うための構造体
 type articleDBPersistence struct {
-	DB *sql.DB
+	DB   *sql.DB
+	Sess *session.Session
 }
 
 // NewArticlePersistence はarticlePersistenceのインスタンスを作成するための関数
-func NewArticleDBPersistence(db *sql.DB) repository.ArticleRepository {
+func NewArticleDBPersistence(db *sql.DB, sess *session.Session) repository.ArticleRepository {
 	return &articleDBPersistence{
-		DB: db,
+		DB:   db,
+		Sess: sess,
 	}
 }
 
@@ -23,12 +30,27 @@ func NewArticleDBPersistence(db *sql.DB) repository.ArticleRepository {
 func (ap articleDBPersistence) InsertArticle(article model.Article) (int, error) {
 
 	var err error
+	var articleId int
+
+	// 記事がすでに登録されていないかチェックする
+	row := ap.DB.QueryRow(`SELECT id FROM article WHERE name=?`, article.Name)
+	err = row.Scan(&(articleId))
+	if articleId != 0 {
+		err = os.Remove(article.LocalPicPath)
+		return 0, nil
+	}
+
+	// 画像をs3に保存
+	article.S3PicUrl, err = ap.UploadArticlePic(article.LocalPicPath)
+	if err != nil {
+		return 0, err
+	}
 
 	// 記事をdbに追加
 	res, err := ap.DB.Exec(`
 		INSERT INTO 
-		article (name,url,date_time,site_id) 
-		VALUES (?,?,now(),?)`, article.Name, article.Url, article.SiteId)
+		article (name,url,date_time,site_id,pic_url) 
+		VALUES (?,?,now(),?,?)`, article.Name, article.Url, article.SiteId, article.S3PicUrl)
 	if err != nil {
 		return 0, err
 	}
@@ -107,4 +129,32 @@ func (ap articleDBPersistence) InsertWordLinkToArticle(word string, articleId in
 	}
 
 	return nil
+}
+
+// UploadArticlePic は記事の画像をs3にアップロードするメソッド
+func (ap articleDBPersistence) UploadArticlePic(picName string) (string, error) {
+
+	file, err := os.Open(picName)
+	if err != nil {
+		return "", nil
+	}
+	defer file.Close()
+
+	bucketName := "hinagane"
+	objectKey := "./pic/article/" + picName
+
+	// Uploaderを作成し、ローカルファイルをアップロード
+	uploader := s3manager.NewUploader(ap.Sess)
+	result, err := uploader.Upload(&s3manager.UploadInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(objectKey),
+		Body:   file,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	err = os.Remove(picName)
+
+	return result.Location, nil
 }

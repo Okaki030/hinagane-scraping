@@ -10,4 +10,5 @@ type ArticleRepository interface {
 	InsertMemberLinkToArticle(string, int) error
 	InsertWord(string) (int, error)
 	InsertWordLinkToArticle(string, int) error
+	UploadArticlePic(string) (string, error)
 }

@@ -18,19 +18,19 @@ func main() {
 	}
 	defer db.Close()
 
-	// 依存性注入
-	articlePersistence := persistence.NewArticleDBPersistence(db)
+	// s3 connect
+	sess, err := config.ConnectS3()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// 依存性注入(MySQL,S3)
+	articlePersistence := persistence.NewArticleDBPersistence(db, sess)
 	memberCountPersistence := persistence.NewMemberCountDBPersistence(db)
 	wordCountPersistence := persistence.NewWordCountDBPersistence(db)
 	articleUseCase := usecase.NewArticleUseCase(articlePersistence, memberCountPersistence, wordCountPersistence)
 
-	// // s3 connect
-	// sess, err := config.ConnectS3()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// // 依存性注入
+	// // 依存性注入(S3)
 	// articlePersistence := persistence.NewArticleS3Persistence(sess)
 	// memberCountPersistence := persistence.NewMemberCountS3Persistence(sess)
 	// wordCountPersistence := persistence.NewWordCountS3Persistence(sess)

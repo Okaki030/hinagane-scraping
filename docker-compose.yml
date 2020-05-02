@@ -12,6 +12,7 @@ services:
     build: .
     volumes:
       - ./:/go/src
+      - $HOME/.aws:/root/.aws
     environment:
       CONFIG_ENV: "local"
     depends_on:

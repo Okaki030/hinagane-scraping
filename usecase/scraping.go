@@ -1,35 +1,40 @@
 package usecase
 
 import (
-	"strings"
+	"errors"
+	"io"
+	"math/rand"
+	"net/http"
+	"os"
+	"time"
 
 	"github.com/Okaki030/hinagane-scraping/domain/model"
 	"github.com/PuerkitoBio/goquery"
-	"github.com/shogo82148/go-mecab"
+	"github.com/oklog/ulid"
 )
 
 // Scraping はまとめ記事のスクレイピング関数をまとめた関数
-func Scraping() ([]model.Article, error) {
+func (au articleUseCase) Scraping() ([]model.Article, error) {
 
 	var err error
 	var ars, articles []model.Article
 
 	// 日向坂まとめ速報からスクレイピング
-	ars, err = ScrapingMatomesokuhou()
+	ars, err = au.ScrapingMatomesokuhou()
 	if err != nil {
 		return nil, err
 	}
 	articles = append(articles, ars...)
 
 	// まとめキングダムからスクレイピング
-	ars, err = ScrapingMatomekingdom()
+	ars, err = au.ScrapingMatomekingdom()
 	if err != nil {
 		return nil, err
 	}
 	articles = append(articles, ars...)
 
 	// 日向速報からスクレイピング
-	ars, err = ScrapingHinatasokuhou()
+	ars, err = au.ScrapingHinatasokuhou()
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +44,7 @@ func Scraping() ([]model.Article, error) {
 }
 
 // ScrapingMatomesokuhou は日向坂まとめ速報の記事をスクレイピングする関数
-func ScrapingMatomesokuhou() ([]model.Article, error) {
+func (au articleUseCase) ScrapingMatomesokuhou() ([]model.Article, error) {
 
 	targetUrl := "http://hiraganakeyaki.blog.jp/"
 	doc, err := goquery.NewDocument(targetUrl)
@@ -48,6 +53,7 @@ func ScrapingMatomesokuhou() ([]model.Article, error) {
 	}
 
 	var articles []model.Article
+	var ok bool
 
 	// 1記事ずつまとめ記事を取得
 	articleList := doc.Find("article.article")
@@ -64,21 +70,34 @@ func ScrapingMatomesokuhou() ([]model.Article, error) {
 		article.Name = titleBox.Text()
 
 		// url取得
-		article.Url, _ = titleBox.Attr("href")
+		article.Url, ok = titleBox.Attr("href")
+		if ok == false {
+			err = errors.New("Did not get Article URL")
+		}
 
 		// カテゴリー取得
 		categorySet := articleBox.Find("ul.article-header-category")
 		article.MemberNames = append(article.MemberNames, categorySet.Find("dd.article-category1").Text())
 		article.MemberNames = append(article.MemberNames, categorySet.Find("dd.article-category2").Text())
 
+		// 画像取得
+		picUrl, ok := articleBox.Find("img.pict").Attr("src")
+		if ok == false {
+			err = errors.New("Did not get Picture URL")
+		}
+		article.LocalPicPath, err = au.ScrapingPic(picUrl)
+
 		articles = append(articles, article)
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	return articles, nil
 }
 
 // ScrapingMatomesokuhou は日向坂まとめキングダムの記事をスクレイピングする関数
-func ScrapingMatomekingdom() ([]model.Article, error) {
+func (au articleUseCase) ScrapingMatomekingdom() ([]model.Article, error) {
 
 	targetUrl := "http://hiragana46matome.com/"
 	doc, err := goquery.NewDocument(targetUrl)
@@ -87,6 +106,7 @@ func ScrapingMatomekingdom() ([]model.Article, error) {
 	}
 
 	var articles []model.Article
+	var ok bool
 
 	// 1記事ずつまとめ記事を取得
 	articleList := doc.Find("div.article")
@@ -101,7 +121,10 @@ func ScrapingMatomekingdom() ([]model.Article, error) {
 		article.Name = articleBox.Find("h3.article-title").Text()
 
 		// url取得
-		article.Url, _ = articleBox.Find("a").Attr("href")
+		article.Url, ok = articleBox.Find("a").Attr("href")
+		if ok == false {
+			err = errors.New("Did not get Article URL")
+		}
 
 		// カテゴリー取得
 		categorySet := articleBox.Find("li.article-category-item")
@@ -109,14 +132,24 @@ func ScrapingMatomekingdom() ([]model.Article, error) {
 			article.MemberNames = append(article.MemberNames, category.Text())
 		})
 
+		// 画像取得
+		picUrl, ok := articleBox.Find("img").Attr("src")
+		if ok == false {
+			err = errors.New("Did not get Picture URL")
+		}
+		article.LocalPicPath, err = au.ScrapingPic(picUrl)
+
 		articles = append(articles, article)
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	return articles, nil
 }
 
 // ScrapingMatomesokuhou は日向速報の記事をスクレイピングする関数
-func ScrapingHinatasokuhou() ([]model.Article, error) {
+func (au articleUseCase) ScrapingHinatasokuhou() ([]model.Article, error) {
 
 	targetUrl := "http://hinatasoku.blog.jp/"
 	doc, err := goquery.NewDocument(targetUrl)
@@ -125,9 +158,10 @@ func ScrapingHinatasokuhou() ([]model.Article, error) {
 	}
 
 	var articles []model.Article
+	var ok bool
 
 	// 1記事ずつまとめ記事を取得
-	articleList := doc.Find("header.article-header")
+	articleList := doc.Find("article.article")
 	articleList.Each(func(i int, articleBox *goquery.Selection) {
 
 		var article model.Article
@@ -139,11 +173,21 @@ func ScrapingHinatasokuhou() ([]model.Article, error) {
 		article.Name = articleBox.Find("h1.article-title").Text()
 
 		// url取得
-		article.Url, _ = articleBox.Find("h1.article-title").Find("a").Attr("href")
+		article.Url, ok = articleBox.Find("h1.article-title").Find("a").Attr("href")
+		if ok == false {
+			err = errors.New("Did not get Article URL")
+		}
 
 		// カテゴリー取得
 		article.MemberNames = append(article.MemberNames, articleBox.Find("dd.article-category1").Text())
 		article.MemberNames = append(article.MemberNames, articleBox.Find("dd.article-category2").Text())
+
+		// 画像取得
+		picUrl, ok := articleBox.Find("img").Attr("src")
+		if ok == false {
+			err = errors.New("Did not get Picture URL")
+		}
+		article.LocalPicPath, err = au.ScrapingPic(picUrl)
 
 		articles = append(articles, article)
 	})
@@ -151,30 +195,28 @@ func ScrapingHinatasokuhou() ([]model.Article, error) {
 	return articles, nil
 }
 
-// ExtractingWords は固有名詞を抽出する関数
-func ExtractingWords(title string) ([]string, error) {
-
-	dic := make(map[string]string)
-	dic["dicdir"] = "/usr/local/lib/mecab/dic/mecab-ipadic-neologd"
-
-	mecab, err := mecab.New(dic)
+// ScrapingPic は画像をスクレイピングするための関数
+func (au articleUseCase) ScrapingPic(picUrl string) (string, error) {
+	response, err := http.Get(picUrl)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	defer mecab.Destroy()
 
-	node, err := mecab.ParseToNode(title)
+	// 画像名(UUID)を生成
+	t := time.Now()
+	entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
+	uuid := ulid.MustNew(ulid.Timestamp(t), entropy)
+
+	picName := uuid.String() + ".jpg"
+
+	file, err := os.Create(picName)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	var words []string
-	for ; !node.IsZero(); node = node.Next() {
-		slice := strings.Split(node.Feature(), ",")
-		if slice[1] == "固有名詞" {
-			words = append(words, node.Surface())
-		}
-	}
+	io.Copy(file, response.Body)
+	response.Body.Close()
+	file.Close()
 
-	return words, nil
+	return picName, nil
 }

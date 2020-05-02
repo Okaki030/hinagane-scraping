@@ -1,3 +1,5 @@
+-- create database hinagane_db;
+
 USE hinagane_db;
 
 DROP TABLE member_counter;
@@ -21,6 +23,7 @@ CREATE TABLE article (
     url VARCHAR(1000) NOT NULL,
     date_time DATETIME NOT NULL,
     site_id INT NOT NULL,
+    pic_url VARCHAR(1000) NOT NULL,
     PRIMARY KEY(id)
 )ENGINE=INNODB DEFAULT CHARSET=utf8;
 
