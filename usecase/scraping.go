@@ -14,27 +14,27 @@ import (
 )
 
 // Scraping はまとめ記事のスクレイピング関数をまとめた関数
-func (au articleUseCase) Scraping() ([]model.Article, error) {
+func Scraping() ([]model.Article, error) {
 
 	var err error
 	var ars, articles []model.Article
 
 	// 日向坂まとめ速報からスクレイピング
-	ars, err = au.ScrapingMatomesokuhou()
+	ars, err = ScrapingMatomesokuhou()
 	if err != nil {
 		return nil, err
 	}
 	articles = append(articles, ars...)
 
 	// まとめキングダムからスクレイピング
-	ars, err = au.ScrapingMatomekingdom()
+	ars, err = ScrapingMatomekingdom()
 	if err != nil {
 		return nil, err
 	}
 	articles = append(articles, ars...)
 
 	// 日向速報からスクレイピング
-	ars, err = au.ScrapingHinatasokuhou()
+	ars, err = ScrapingHinatasokuhou()
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func (au articleUseCase) Scraping() ([]model.Article, error) {
 }
 
 // ScrapingMatomesokuhou は日向坂まとめ速報の記事をスクレイピングする関数
-func (au articleUseCase) ScrapingMatomesokuhou() ([]model.Article, error) {
+func ScrapingMatomesokuhou() ([]model.Article, error) {
 
 	targetUrl := "http://hiraganakeyaki.blog.jp/"
 	doc, err := goquery.NewDocument(targetUrl)
@@ -85,7 +85,7 @@ func (au articleUseCase) ScrapingMatomesokuhou() ([]model.Article, error) {
 		if ok == false {
 			err = errors.New("Did not get Picture URL")
 		}
-		article.LocalPicPath, err = au.ScrapingPic(picUrl)
+		article.LocalPicPath, err = ScrapingPic(picUrl)
 
 		articles = append(articles, article)
 	})
@@ -97,7 +97,7 @@ func (au articleUseCase) ScrapingMatomesokuhou() ([]model.Article, error) {
 }
 
 // ScrapingMatomesokuhou は日向坂まとめキングダムの記事をスクレイピングする関数
-func (au articleUseCase) ScrapingMatomekingdom() ([]model.Article, error) {
+func ScrapingMatomekingdom() ([]model.Article, error) {
 
 	targetUrl := "http://hiragana46matome.com/"
 	doc, err := goquery.NewDocument(targetUrl)
@@ -137,7 +137,7 @@ func (au articleUseCase) ScrapingMatomekingdom() ([]model.Article, error) {
 		if ok == false {
 			err = errors.New("Did not get Picture URL")
 		}
-		article.LocalPicPath, err = au.ScrapingPic(picUrl)
+		article.LocalPicPath, err = ScrapingPic(picUrl)
 
 		articles = append(articles, article)
 	})
@@ -149,7 +149,7 @@ func (au articleUseCase) ScrapingMatomekingdom() ([]model.Article, error) {
 }
 
 // ScrapingMatomesokuhou は日向速報の記事をスクレイピングする関数
-func (au articleUseCase) ScrapingHinatasokuhou() ([]model.Article, error) {
+func ScrapingHinatasokuhou() ([]model.Article, error) {
 
 	targetUrl := "http://hinatasoku.blog.jp/"
 	doc, err := goquery.NewDocument(targetUrl)
@@ -187,7 +187,7 @@ func (au articleUseCase) ScrapingHinatasokuhou() ([]model.Article, error) {
 		if ok == false {
 			err = errors.New("Did not get Picture URL")
 		}
-		article.LocalPicPath, err = au.ScrapingPic(picUrl)
+		article.LocalPicPath, err = ScrapingPic(picUrl)
 
 		articles = append(articles, article)
 	})
@@ -196,7 +196,7 @@ func (au articleUseCase) ScrapingHinatasokuhou() ([]model.Article, error) {
 }
 
 // ScrapingPic は画像をスクレイピングするための関数
-func (au articleUseCase) ScrapingPic(picUrl string) (string, error) {
+func ScrapingPic(picUrl string) (string, error) {
 	response, err := http.Get(picUrl)
 	if err != nil {
 		return "", err

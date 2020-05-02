@@ -3,20 +3,9 @@ package usecase
 import (
 	"strings"
 
-	"github.com/Okaki030/hinagane-scraping/domain/model"
 	"github.com/Okaki030/hinagane-scraping/domain/repository"
 	"github.com/shogo82148/go-mecab"
 )
-
-// ArticleUseCase はスクレイピングプログラムに必要なメソッドを定義するインターフェース
-type ArticleUseCase interface {
-	CollectArticle() error
-	Scraping() ([]model.Article, error)
-	ScrapingMatomesokuhou() ([]model.Article, error)
-	ScrapingMatomekingdom() ([]model.Article, error)
-	ScrapingHinatasokuhou() ([]model.Article, error)
-	ScrapingPic(url string) (string, error)
-}
 
 // articleUseCase はスクレイピングプログラムに必要な構造体をまとめた構造体
 type articleUseCase struct {
@@ -39,7 +28,7 @@ func (au articleUseCase) CollectArticle() error {
 
 	var err error
 
-	articles, err := au.Scraping()
+	articles, err := Scraping()
 	if err != nil {
 		return nil
 	}
