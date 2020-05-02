@@ -80,6 +80,9 @@ func ScrapingMatomesokuhou() ([]model.Article, error) {
 		article.MemberNames = append(article.MemberNames, categorySet.Find("dd.article-category1").Text())
 		article.MemberNames = append(article.MemberNames, categorySet.Find("dd.article-category2").Text())
 
+		// 時間を取得
+		article.Year, article.Month, article.Day, article.Hour = GetNow()
+
 		// 画像取得
 		picUrl, ok := articleBox.Find("img.pict").Attr("src")
 		if ok == false {
@@ -132,6 +135,9 @@ func ScrapingMatomekingdom() ([]model.Article, error) {
 			article.MemberNames = append(article.MemberNames, category.Text())
 		})
 
+		// 時間を取得
+		article.Year, article.Month, article.Day, article.Hour = GetNow()
+
 		// 画像取得
 		picUrl, ok := articleBox.Find("img").Attr("src")
 		if ok == false {
@@ -182,6 +188,9 @@ func ScrapingHinatasokuhou() ([]model.Article, error) {
 		article.MemberNames = append(article.MemberNames, articleBox.Find("dd.article-category1").Text())
 		article.MemberNames = append(article.MemberNames, articleBox.Find("dd.article-category2").Text())
 
+		// 時間を取得
+		article.Year, article.Month, article.Day, article.Hour = GetNow()
+
 		// 画像取得
 		picUrl, ok := articleBox.Find("img").Attr("src")
 		if ok == false {
@@ -193,6 +202,12 @@ func ScrapingHinatasokuhou() ([]model.Article, error) {
 	})
 
 	return articles, nil
+}
+
+func GetNow() (int, int, int, int) {
+	t := time.Now()
+
+	return t.Year(), int(t.Month()), t.Day(), t.Hour()
 }
 
 // ScrapingPic は画像をスクレイピングするための関数

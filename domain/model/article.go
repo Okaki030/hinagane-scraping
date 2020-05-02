@@ -1,12 +1,13 @@
 package model
 
-import "time"
-
 // Article はまとめ記事を扱うための構造体
 type Article struct {
 	Name         string
 	Url          string
-	DateTime     time.Time
+	Year         int
+	Month        int
+	Day          int
+	Hour         int
 	MemberNames  []string
 	Words        []string
 	SiteId       int
