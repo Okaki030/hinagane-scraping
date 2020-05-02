@@ -11,6 +11,7 @@ type Article struct {
 	MemberNames  []string
 	Words        []string
 	SiteId       int
+	PicUrl       string
 	LocalPicPath string
 	S3PicUrl     string
 }

@@ -2,15 +2,10 @@ package usecase
 
 import (
 	"errors"
-	"io"
-	"math/rand"
-	"net/http"
-	"os"
 	"time"
 
 	"github.com/Okaki030/hinagane-scraping/domain/model"
 	"github.com/PuerkitoBio/goquery"
-	"github.com/oklog/ulid"
 )
 
 // Scraping はまとめ記事のスクレイピング関数をまとめた関数
@@ -84,11 +79,11 @@ func ScrapingMatomesokuhou() ([]model.Article, error) {
 		article.Year, article.Month, article.Day, article.Hour = GetNow()
 
 		// 画像取得
-		picUrl, ok := articleBox.Find("img.pict").Attr("src")
+		article.PicUrl, ok = articleBox.Find("img.pict").Attr("src")
 		if ok == false {
 			err = errors.New("Did not get Picture URL")
 		}
-		article.LocalPicPath, err = ScrapingPic(picUrl)
+		// article.LocalPicPath, err = ScrapingPic(picUrl)
 
 		articles = append(articles, article)
 	})
@@ -139,11 +134,11 @@ func ScrapingMatomekingdom() ([]model.Article, error) {
 		article.Year, article.Month, article.Day, article.Hour = GetNow()
 
 		// 画像取得
-		picUrl, ok := articleBox.Find("img").Attr("src")
+		article.PicUrl, ok = articleBox.Find("img").Attr("src")
 		if ok == false {
 			err = errors.New("Did not get Picture URL")
 		}
-		article.LocalPicPath, err = ScrapingPic(picUrl)
+		// article.LocalPicPath, err = ScrapingPic(picUrl)
 
 		articles = append(articles, article)
 	})
@@ -192,11 +187,11 @@ func ScrapingHinatasokuhou() ([]model.Article, error) {
 		article.Year, article.Month, article.Day, article.Hour = GetNow()
 
 		// 画像取得
-		picUrl, ok := articleBox.Find("img").Attr("src")
+		article.PicUrl, ok = articleBox.Find("img").Attr("src")
 		if ok == false {
 			err = errors.New("Did not get Picture URL")
 		}
-		article.LocalPicPath, err = ScrapingPic(picUrl)
+		// article.LocalPicPath, err = ScrapingPic(picUrl)
 
 		articles = append(articles, article)
 	})
@@ -208,30 +203,4 @@ func GetNow() (int, int, int, int) {
 	t := time.Now()
 
 	return t.Year(), int(t.Month()), t.Day(), t.Hour()
-}
-
-// ScrapingPic は画像をスクレイピングするための関数
-func ScrapingPic(picUrl string) (string, error) {
-	response, err := http.Get(picUrl)
-	if err != nil {
-		return "", err
-	}
-
-	// 画像名(UUID)を生成
-	t := time.Now()
-	entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
-	uuid := ulid.MustNew(ulid.Timestamp(t), entropy)
-
-	picName := uuid.String() + ".jpg"
-
-	file, err := os.Create(picName)
-	if err != nil {
-		return "", err
-	}
-
-	io.Copy(file, response.Body)
-	response.Body.Close()
-	file.Close()
-
-	return picName, nil
 }

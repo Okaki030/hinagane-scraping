@@ -30,15 +30,15 @@ func (au articleS3UseCase) CollectArticle() error {
 		return nil
 	}
 
+	// 今日の記事(csv)をs3から取得
+	err = au.articleRepository.DownloadArticle()
+	if err != nil {
+		return err
+	}
+
 	for i, _ := range articles {
 
 		var err error
-
-		// 今日の記事(csv)をs3から取得
-		csvName, err := au.articleRepository.DownloadArticle()
-		if err != nil {
-			return err
-		}
 
 		// タイトルから固有名詞を取得
 		words, err := ExtractingWords(articles[i].Name)
@@ -47,13 +47,13 @@ func (au articleS3UseCase) CollectArticle() error {
 		}
 
 		// まとめ記事をdbに登録
-		err = au.articleRepository.InsertArticle(articles[i], words, csvName)
+		exist, err := au.articleRepository.InsertArticle(articles[i], words)
 		if err != nil {
 			return err
 		}
-
-		// 記事データをs3に保存
-		au.articleRepository.UploadArticle(csvName)
+		if exist == true {
+			continue
+		}
 
 		// すでに登録されている時は次の記事に飛ばす
 		// if lastArticleId == 0 {
@@ -91,6 +91,8 @@ func (au articleS3UseCase) CollectArticle() error {
 		// 	}
 		// }
 	}
+	// 記事データをs3に保存
+	au.articleRepository.UploadArticle()
 
 	// 直近3日間のまとめ記事へのメンバーの出現回数をカウント
 	// err = au.memberCountRepository.InsertMemberCountInThreeDays()

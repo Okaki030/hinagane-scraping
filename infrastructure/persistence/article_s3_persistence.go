@@ -3,6 +3,9 @@ package persistence
 import (
 	"encoding/csv"
 	"fmt"
+	"io"
+	"math/rand"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -12,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/oklog/ulid"
 
 	"github.com/Okaki030/hinagane-scraping/domain/model"
 	"github.com/Okaki030/hinagane-scraping/domain/repository"
@@ -30,27 +34,40 @@ func NewArticleS3Persistence(sess *session.Session) repository.ArticleS3Reposito
 }
 
 // InsertArticle は1つのまとめ記事を保存するためのメソッド
-func (ap articleS3Persistence) InsertArticle(article model.Article, words []string, csvName string) error {
+func (ap articleS3Persistence) InsertArticle(article model.Article, words []string) (bool, error) {
 
 	fmt.Println("Insert article start")
 	var err error
 
 	// 記事の存在を確認
+	exist, err := ap.ConfirmExistenceArticle(article.Name)
+	if err != nil {
+		os.Remove(article.LocalPicPath)
+		return false, err
+	}
+	// 記事が存在したら終わり
+	if exist == true {
+		os.Remove(article.LocalPicPath)
+		return true, nil
+	}
 
 	// メンバースライスを","で結合
 	memberNamesStr := strings.Join(article.MemberNames, ",")
 	wordsStr := strings.Join(words, ",")
 
+	// 画像を取得
+	article.LocalPicPath, err = DownloadPic(article.PicUrl)
+
 	// 画像をs3に保存
 	article.S3PicUrl, err = ap.UploadArticlePic(article.LocalPicPath)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// 存在しなかったら作成、存在したら追記
-	file, err := os.OpenFile("./"+csvName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	file, err := os.OpenFile("./articles.csv", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer file.Close()
 
@@ -59,7 +76,7 @@ func (ap articleS3Persistence) InsertArticle(article model.Article, words []stri
 	// ファイル情報取得
 	fileinfo, err := file.Stat()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// ファイルサイズを表示
@@ -98,77 +115,50 @@ func (ap articleS3Persistence) InsertArticle(article model.Article, words []stri
 	writer.Write(articleContent)
 	writer.Flush()
 
-	return nil
+	return false, nil
 }
 
-// InsertMemberLinkToArticle は記事ごとのメンバーカテゴリを保存するためのメソッド
-func (ap articleS3Persistence) InsertMemberLinkToArticle(memberName string, articleId int) error {
+func (ap articleS3Persistence) ConfirmExistenceArticle(articleName string) (bool, error) {
 
-	// var memberId int
+	fmt.Println("confirm start")
+	sql := "SELECT name FROM S3Object where name='" + articleName + "' LIMIT 1"
+	fmt.Println(sql)
+	svc := s3.New(ap.Sess)
 
-	// // メンバー名からメンバーidを取得
-	// row := ap.DB.QueryRow(`SELECT id FROM member WHERE name=?`, memberName)
-	// _ = row.Scan(&(memberId))
+	params := &s3.SelectObjectContentInput{
+		Bucket:          aws.String("hinagane"),
+		Key:             aws.String("./data/article/articles.csv"),
+		ExpressionType:  aws.String(s3.ExpressionTypeSql),
+		Expression:      aws.String(sql),
+		RequestProgress: &s3.RequestProgress{},
+		InputSerialization: &s3.InputSerialization{
+			CompressionType: aws.String("NONE"),
+			CSV: &s3.CSVInput{
+				FileHeaderInfo: aws.String(s3.FileHeaderInfoUse),
+			},
+		},
+		OutputSerialization: &s3.OutputSerialization{
+			CSV: &s3.CSVOutput{},
+		},
+	}
 
-	// // 記事ごとにカテゴリ(メンバー名)を格納
-	// // TODO:1カテゴリ目でメンバーを取得し、2カテゴリ名で違った場合重複で登録使用しエラーを吐く
-	// if memberId != 0 {
-	// 	_, err := ap.DB.Exec(`
-	// 		INSERT INTO
-	// 		article_member_link (article_id, member_id)
-	// 		VALUES (?,?)`, articleId, memberId)
-	// 	if err != nil {
-	// 		// 何もしない
-	// 	}
-	// }
+	resp, err := svc.SelectObjectContent(params)
+	if err != nil {
+		return false, err
+	}
+	defer resp.EventStream.Close()
 
-	// return nil
-	return nil
-}
+	for event := range resp.EventStream.Events() {
+		// 取得できたか判定する
+		s, ok := event.(*s3.StatsEvent)
+		if ok {
+			if int(*s.Details.BytesReturned) > 0 {
+				return true, nil
+			}
+		}
+	}
 
-// InsertWord は単語をdbに保存するメソッド
-func (ap articleS3Persistence) InsertWord(word string) (int, error) {
-
-	// // 固有名詞をwordテーブルに登録
-	// res, err := ap.DB.Exec(`
-	// 	INSERT INTO word (name)
-	// 		SELECT ? FROM dual
-	// 		WHERE NOT EXISTS(SELECT * FROM word WHERE name=?);`, word, word)
-	// if err != nil {
-	// 	return 0, err
-	// }
-
-	// lastId, err := res.LastInsertId()
-	// if err != nil {
-	// 	return 0, err
-	// }
-
-	// return int(lastId), nil
-	return 10, nil
-}
-
-// InsertWordLinkToArticle は記事ごとのワードを保存するためのメソッド
-func (ap articleS3Persistence) InsertWordLinkToArticle(word string, articleId int) error {
-
-	// var wordId int
-
-	// // メンバー名からメンバーidを取得
-	// row := ap.DB.QueryRow(`SELECT id FROM word WHERE name=?`, word)
-	// _ = row.Scan(&(wordId))
-
-	// // 記事ごとにカテゴリ(メンバー名)を格納
-	// // TODO:1カテゴリ目でメンバーを取得し、2カテゴリ名で違った場合重複で登録使用しエラーを吐く
-	// if wordId != 0 {
-	// 	_, err := ap.DB.Exec(`
-	// 		INSERT INTO
-	// 		article_word_link (article_id, word_id)
-	// 		VALUES (?,?)`, articleId, wordId)
-	// 	if err != nil {
-	// 		// 何もしない
-	// 	}
-	// }
-
-	return nil
+	return false, nil
 }
 
 // UploadArticlePic は記事の画像をs3にアップロードするメソッド
@@ -201,20 +191,19 @@ func (ap articleS3Persistence) UploadArticlePic(picName string) (string, error) 
 	return result.Location, nil
 }
 
-func (ap articleS3Persistence) DownloadArticle() (string, error) {
+func (ap articleS3Persistence) DownloadArticle() error {
 
-	t := time.Now()
-
-	csvName := strconv.Itoa(t.Year()) + strconv.Itoa(int(t.Month())) + strconv.Itoa(t.Day()) + ".csv"
+	fmt.Println("s3 download start")
 
 	// S3オブジェクトを書き込むファイルの作成
-	file, err := os.Create("./" + csvName)
+	file, err := os.Create("./articles.csv")
 	if err != nil {
-		return "", err
+		return err
 	}
+	defer file.Close()
 
 	bucketName := "hinagane"
-	objectKey := "./data/article/" + csvName
+	objectKey := "./data/article/articles.csv"
 
 	// Downloaderを作成し、S3オブジェクトをダウンロード
 	downloader := s3manager.NewDownloader(ap.Sess)
@@ -223,25 +212,25 @@ func (ap articleS3Persistence) DownloadArticle() (string, error) {
 		Key:    aws.String(objectKey),
 	})
 	if err != nil {
-		return csvName, nil
+		return err
 	}
 
-	return csvName, nil
+	return nil
 }
 
 // UploadArticlePic は記事の画像をs3にアップロードするメソッド
-func (ap articleS3Persistence) UploadArticle(csvName string) error {
+func (ap articleS3Persistence) UploadArticle() error {
 
 	fmt.Println("csv upload article start")
 
-	file, err := os.Open(csvName)
+	file, err := os.Open("articles.csv")
 	if err != nil {
 		return nil
 	}
 	defer file.Close()
 
 	bucketName := "hinagane"
-	objectKey := "./data/article/" + csvName
+	objectKey := "./data/article/articles.csv"
 
 	// Uploaderを作成し、ローカルファイルをアップロード
 	uploader := s3manager.NewUploader(ap.Sess)
@@ -254,7 +243,33 @@ func (ap articleS3Persistence) UploadArticle(csvName string) error {
 		return err
 	}
 
-	err = os.Remove(csvName)
+	err = os.Remove("articles.csv")
 
 	return nil
+}
+
+// DownloadPic は画像をスクレイピングするための関数
+func DownloadPic(picUrl string) (string, error) {
+	response, err := http.Get(picUrl)
+	if err != nil {
+		return "", err
+	}
+
+	// 画像名(UUID)を生成
+	t := time.Now()
+	entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
+	uuid := ulid.MustNew(ulid.Timestamp(t), entropy)
+
+	picName := uuid.String() + ".jpg"
+
+	file, err := os.Create(picName)
+	if err != nil {
+		return "", err
+	}
+
+	io.Copy(file, response.Body)
+	response.Body.Close()
+	file.Close()
+
+	return picName, nil
 }
