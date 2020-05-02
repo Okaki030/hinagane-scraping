@@ -15,6 +15,7 @@ services:
       - $HOME/.aws:/root/.aws
     environment:
       CONFIG_ENV: "local"
+      TZ: Asia/Tokyo
     # depends_on:
     #   - mysql
     ports:
