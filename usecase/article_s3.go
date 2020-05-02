@@ -32,6 +32,14 @@ func (au articleS3UseCase) CollectArticle() error {
 
 	for i, _ := range articles {
 
+		var err error
+
+		// 今日の記事(csv)をs3から取得
+		csvName, err := au.articleRepository.DownloadArticle()
+		if err != nil {
+			return err
+		}
+
 		// タイトルから固有名詞を取得
 		words, err := ExtractingWords(articles[i].Name)
 		if err != nil {
@@ -39,7 +47,7 @@ func (au articleS3UseCase) CollectArticle() error {
 		}
 
 		// まとめ記事をdbに登録
-		csvName, err := au.articleRepository.InsertArticle(articles[i], words)
+		err = au.articleRepository.InsertArticle(articles[i], words, csvName)
 		if err != nil {
 			return err
 		}

@@ -3,13 +3,14 @@ package persistence
 import (
 	"encoding/csv"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/Okaki030/hinagane-scraping/domain/model"
@@ -29,7 +30,7 @@ func NewArticleS3Persistence(sess *session.Session) repository.ArticleS3Reposito
 }
 
 // InsertArticle は1つのまとめ記事を保存するためのメソッド
-func (ap articleS3Persistence) InsertArticle(article model.Article, words []string) (string, error) {
+func (ap articleS3Persistence) InsertArticle(article model.Article, words []string, csvName string) error {
 
 	fmt.Println("Insert article start")
 	var err error
@@ -43,10 +44,45 @@ func (ap articleS3Persistence) InsertArticle(article model.Article, words []stri
 	// 画像をs3に保存
 	article.S3PicUrl, err = ap.UploadArticlePic(article.LocalPicPath)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	// csvに書き込むデータをsliceにまとめる
+	// 存在しなかったら作成、存在したら追記
+	file, err := os.OpenFile("./"+csvName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+
+	// ファイル情報取得
+	fileinfo, err := file.Stat()
+	if err != nil {
+		return err
+	}
+
+	// ファイルサイズを表示
+	fmt.Println(fileinfo.Size())
+
+	// ファイルに何も書き込まれていないときにヘッダー名をcsvに書き込む
+	if fileinfo.Size() == 0 {
+		var header = []string{
+			"name",
+			"url",
+			"year",
+			"month",
+			"day",
+			"hour",
+			"memberNames",
+			"words",
+			"siteId",
+			"s3PicUrl",
+		}
+		writer.Write(header)
+	}
+
+	// 記事データをcsvに書き込む
 	var articleContent = []string{
 		article.Name,
 		article.Url,
@@ -59,22 +95,10 @@ func (ap articleS3Persistence) InsertArticle(article model.Article, words []stri
 		strconv.Itoa(article.SiteId),
 		article.S3PicUrl,
 	}
-
-	// csvに書き込み
-	csvName := strconv.Itoa(article.Year) + strconv.Itoa(article.Month) + strconv.Itoa(article.Day) + ".csv"
-
-	// 存在しなかったら作成、存在したら追記
-	file, err := os.OpenFile("./"+csvName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Println(err)
-	}
-	defer file.Close()
-
-	writer := csv.NewWriter(file)
 	writer.Write(articleContent)
 	writer.Flush()
 
-	return csvName, nil
+	return nil
 }
 
 // InsertMemberLinkToArticle は記事ごとのメンバーカテゴリを保存するためのメソッド
@@ -175,6 +199,34 @@ func (ap articleS3Persistence) UploadArticlePic(picName string) (string, error) 
 	err = os.Remove(picName)
 
 	return result.Location, nil
+}
+
+func (ap articleS3Persistence) DownloadArticle() (string, error) {
+
+	t := time.Now()
+
+	csvName := strconv.Itoa(t.Year()) + strconv.Itoa(int(t.Month())) + strconv.Itoa(t.Day()) + ".csv"
+
+	// S3オブジェクトを書き込むファイルの作成
+	file, err := os.Create("./" + csvName)
+	if err != nil {
+		return "", err
+	}
+
+	bucketName := "hinagane"
+	objectKey := "./data/article/" + csvName
+
+	// Downloaderを作成し、S3オブジェクトをダウンロード
+	downloader := s3manager.NewDownloader(ap.Sess)
+	_, err = downloader.Download(file, &s3.GetObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(objectKey),
+	})
+	if err != nil {
+		return csvName, nil
+	}
+
+	return csvName, nil
 }
 
 // UploadArticlePic は記事の画像をs3にアップロードするメソッド
