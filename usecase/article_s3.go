@@ -30,7 +30,7 @@ func (au articleS3UseCase) CollectArticle() error {
 		return nil
 	}
 
-	// 今日の記事(csv)をs3から取得
+	// 記事(csv)をs3から取得
 	err = au.articleRepository.DownloadArticle()
 	if err != nil {
 		return err
@@ -54,56 +54,27 @@ func (au articleS3UseCase) CollectArticle() error {
 		if exist == true {
 			continue
 		}
-
-		// すでに登録されている時は次の記事に飛ばす
-		// if lastArticleId == 0 {
-		// 	continue
-		// }
-
-		// // 記事にメンバーカテゴリを紐付け
-		// for _, memberName := range articles[i].MemberNames {
-		// 	err = au.articleRepository.InsertMemberLinkToArticle(memberName, lastArticleId)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// }
-
-		// // タイトルから単語を取得
-		// words, err := ExtractingWords(articles[i].Name)
-		// if err != nil {
-		// 	return err
-		// }
-		// articles[i].Words = append(articles[i].Words, words...)
-
-		// // 単語をdbに登録し記事に単語を紐付け
-		// for _, word := range articles[i].Words {
-
-		// 	// 単語をdbに登録
-		// 	_, err := au.articleRepository.InsertWord(word)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-
-		// 	// 記事に単語を紐付け
-		// 	err = au.articleRepository.InsertWordLinkToArticle(word, lastArticleId)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// }
 	}
 	// 記事データをs3に保存
 	au.articleRepository.UploadArticle()
 
-	// 直近3日間のまとめ記事へのメンバーの出現回数をカウント
-	// err = au.memberCountRepository.InsertMemberCountInThreeDays()
-	// if err != nil {
-	// 	return nil
-	// }
+	// メンバーカウントcsvを取得
+	err = au.memberCountRepository.DownloadCSV()
+	if err != nil {
+		return err
+	}
 
-	// err = au.wordCountRepository.InsertWordCountInThreeDays()
-	// if err != nil {
-	// 	return nil
-	// }
+	// 直近3日間のまとめ記事へのメンバーの出現回数をカウント
+	err = au.memberCountRepository.InsertMemberCountInThreeDays()
+	if err != nil {
+		return nil
+	}
+
+	// メンバーカウントcsvをアップロード
+	err = au.memberCountRepository.UploadCSV()
+	if err != nil {
+		return nil
+	}
 
 	return nil
 }
