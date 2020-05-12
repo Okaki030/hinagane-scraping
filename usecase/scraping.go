@@ -87,9 +87,9 @@ func ScrapingMatomesokuhou() ([]model.Article, error) {
 
 		articles = append(articles, article)
 	})
-	if err != nil {
-		return nil, err
-	}
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return articles, nil
 }
