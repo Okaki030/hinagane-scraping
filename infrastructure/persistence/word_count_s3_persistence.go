@@ -49,7 +49,7 @@ func (wcp wordCountS3Presistence) InsertWordCountInThreeDays() error {
 	wordsSlice = wordsSlice[:len(wordsSlice)-1]
 	pretty.Println("wordsSlice", wordsSlice)
 	for _, words := range wordsSlice {
-		wordSlice = append(wordSlice, strings.Split(words, ",")...)
+		wordSlice = append(wordSlice, strings.Split(words, "+")...)
 	}
 	pretty.Println(wordSlice)
 

@@ -51,9 +51,9 @@ func (ap articleS3Persistence) InsertArticle(article model.Article, words []stri
 		return true, nil
 	}
 
-	// メンバースライスを","で結合
-	memberNamesStr := strings.Join(article.MemberNames, ",")
-	wordsStr := strings.Join(words, ",")
+	// メンバースライスを"+"で結合
+	memberNamesStr := strings.Join(article.MemberNames, "+")
+	wordsStr := strings.Join(words, "+")
 
 	// 画像を取得
 	article.LocalPicPath, err = DownloadPic(article.PicUrl)
@@ -129,7 +129,7 @@ func (ap articleS3Persistence) ConfirmExistenceArticle(articleName string) (bool
 		Bucket:          aws.String("hinagane"),
 		Key:             aws.String("./data/article/articles.csv"),
 		ExpressionType:  aws.String(s3.ExpressionTypeSql),
-		Expression:      aws.String(sql),
+		Expression:      aws.String("SELECT name FROM S3Object where name='" + articleName + "' LIMIT 1"),
 		RequestProgress: &s3.RequestProgress{},
 		InputSerialization: &s3.InputSerialization{
 			CompressionType: aws.String("NONE"),
