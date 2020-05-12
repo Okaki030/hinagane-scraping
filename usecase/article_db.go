@@ -108,11 +108,21 @@ func ExtractingWords(title string) ([]string, error) {
 		return nil, err
 	}
 
+	stopWords := []string{"小坂菜緒", "日向坂46", "日向坂", "", "www", "wwww", "wwwww", "wwwwww", "wwwwwww", "wwwwwwww", "wwwwwwwww", "wwwwwwwwww", "ｗｗｗｗｗｗｗｗｗ", "ｗｗｗｗｗｗ", "丹生"}
+
 	var words []string
 	for ; !node.IsZero(); node = node.Next() {
+		stopFlag := false
 		slice := strings.Split(node.Feature(), ",")
 		if slice[1] == "固有名詞" {
-			words = append(words, node.Surface())
+			for _, s := range stopWords {
+				if s == node.Surface() {
+					stopFlag = true
+				}
+			}
+			if !stopFlag {
+				words = append(words, node.Surface())
+			}
 		}
 	}
 
