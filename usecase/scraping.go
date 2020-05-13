@@ -2,10 +2,13 @@ package usecase
 
 import (
 	"errors"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Okaki030/hinagane-scraping/domain/model"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/shogo82148/go-mecab"
 )
 
 // Scraping はまとめ記事のスクレイピング関数をまとめた関数
@@ -76,7 +79,7 @@ func ScrapingMatomesokuhou() ([]model.Article, error) {
 		article.MemberNames = append(article.MemberNames, categorySet.Find("dd.article-category2").Text())
 
 		// 時間を取得
-		article.Year, article.Month, article.Day, article.Hour = GetNow()
+		article.DateTime = GetNow()
 
 		// 画像取得
 		article.PicUrl, ok = articleBox.Find("img.pict").Attr("src")
@@ -131,7 +134,7 @@ func ScrapingMatomekingdom() ([]model.Article, error) {
 		})
 
 		// 時間を取得
-		article.Year, article.Month, article.Day, article.Hour = GetNow()
+		article.DateTime = GetNow()
 
 		// 画像取得
 		article.PicUrl, ok = articleBox.Find("img").Attr("src")
@@ -184,7 +187,7 @@ func ScrapingHinatasokuhou() ([]model.Article, error) {
 		article.MemberNames = append(article.MemberNames, articleBox.Find("dd.article-category2").Text())
 
 		// 時間を取得
-		article.Year, article.Month, article.Day, article.Hour = GetNow()
+		article.DateTime = GetNow()
 
 		// 画像取得
 		article.PicUrl, ok = articleBox.Find("img").Attr("src")
@@ -199,8 +202,64 @@ func ScrapingHinatasokuhou() ([]model.Article, error) {
 	return articles, nil
 }
 
-func GetNow() (int, int, int, int) {
+// GetNow は現在時刻を取得する関数
+func GetNow() string {
 	t := time.Now()
 
-	return t.Year(), int(t.Month()), t.Day(), t.Hour()
+	month := formatDateTime(int(t.Month()))
+	day := formatDateTime(t.Day())
+	hour := formatDateTime(t.Hour())
+
+	dateTime := strconv.Itoa(t.Year()) + "-" + month + "-" + day + "T" + hour + ":00:00Z"
+
+	return dateTime
+}
+
+func formatDateTime(dateTimeOne int) string {
+	dateTimeOneStr := ""
+	if dateTimeOne < 10 {
+		dateTimeOneStr = "0" + strconv.Itoa(dateTimeOne)
+	} else {
+		dateTimeOneStr = strconv.Itoa(dateTimeOne)
+	}
+
+	return dateTimeOneStr
+}
+
+// ExtractingWords は固有名詞を抽出する関数
+func ExtractingWords(title string) ([]string, error) {
+
+	dic := make(map[string]string)
+	dic["dicdir"] = "/usr/local/lib/mecab/dic/mecab-ipadic-neologd"
+
+	mecab, err := mecab.New(dic)
+	if err != nil {
+		return nil, err
+	}
+	defer mecab.Destroy()
+
+	node, err := mecab.ParseToNode(title)
+	if err != nil {
+		return nil, err
+	}
+
+	stopWords := []string{"小坂菜緒", "日向坂46", "日向坂", "", "www", "wwww", "wwwww", "wwwwww", "wwwwwww", "wwwwwwww", "wwwwwwwww", "wwwwwwwwww", "ｗｗｗｗｗｗｗｗｗ", "ｗｗｗｗｗｗ", "丹生"}
+
+	var words []string
+	for ; !node.IsZero(); node = node.Next() {
+		stopFlag := false
+		slice := strings.Split(node.Feature(), ",")
+		if slice[1] == "固有名詞" {
+			for _, s := range stopWords {
+				if s == node.Surface() {
+					stopFlag = true
+				}
+			}
+			if !stopFlag {
+				words = append(words, node.Surface())
+			}
+		}
+	}
+
+	return words, nil
 }

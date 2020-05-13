@@ -1,10 +1,7 @@
 package usecase
 
 import (
-	"strings"
-
 	"github.com/Okaki030/hinagane-scraping/domain/repository"
-	"github.com/shogo82148/go-mecab"
 )
 
 // articleUseCase はスクレイピングプログラムに必要な構造体をまとめた構造体
@@ -89,42 +86,4 @@ func (au articleUseCase) CollectArticle() error {
 	}
 
 	return nil
-}
-
-// ExtractingWords は固有名詞を抽出する関数
-func ExtractingWords(title string) ([]string, error) {
-
-	dic := make(map[string]string)
-	dic["dicdir"] = "/usr/local/lib/mecab/dic/mecab-ipadic-neologd"
-
-	mecab, err := mecab.New(dic)
-	if err != nil {
-		return nil, err
-	}
-	defer mecab.Destroy()
-
-	node, err := mecab.ParseToNode(title)
-	if err != nil {
-		return nil, err
-	}
-
-	stopWords := []string{"小坂菜緒", "日向坂46", "日向坂", "", "www", "wwww", "wwwww", "wwwwww", "wwwwwww", "wwwwwwww", "wwwwwwwww", "wwwwwwwwww", "ｗｗｗｗｗｗｗｗｗ", "ｗｗｗｗｗｗ", "丹生"}
-
-	var words []string
-	for ; !node.IsZero(); node = node.Next() {
-		stopFlag := false
-		slice := strings.Split(node.Feature(), ",")
-		if slice[1] == "固有名詞" {
-			for _, s := range stopWords {
-				if s == node.Surface() {
-					stopFlag = true
-				}
-			}
-			if !stopFlag {
-				words = append(words, node.Surface())
-			}
-		}
-	}
-
-	return words, nil
 }
