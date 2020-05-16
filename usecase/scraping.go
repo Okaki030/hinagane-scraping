@@ -12,27 +12,27 @@ import (
 )
 
 // Scraping はまとめ記事のスクレイピング関数をまとめた関数
-func Scraping() ([]model.Article, error) {
+func Scraping(now string) ([]model.Article, error) {
 
 	var err error
 	var ars, articles []model.Article
 
 	// 日向坂まとめ速報からスクレイピング
-	ars, err = ScrapingMatomesokuhou()
+	ars, err = ScrapingMatomesokuhou(now)
 	if err != nil {
 		return nil, err
 	}
 	articles = append(articles, ars...)
 
 	// まとめキングダムからスクレイピング
-	ars, err = ScrapingMatomekingdom()
+	ars, err = ScrapingMatomekingdom(now)
 	if err != nil {
 		return nil, err
 	}
 	articles = append(articles, ars...)
 
 	// 日向速報からスクレイピング
-	ars, err = ScrapingHinatasokuhou()
+	ars, err = ScrapingHinatasokuhou(now)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func Scraping() ([]model.Article, error) {
 }
 
 // ScrapingMatomesokuhou は日向坂まとめ速報の記事をスクレイピングする関数
-func ScrapingMatomesokuhou() ([]model.Article, error) {
+func ScrapingMatomesokuhou(now string) ([]model.Article, error) {
 
 	targetUrl := "http://hiraganakeyaki.blog.jp/"
 	doc, err := goquery.NewDocument(targetUrl)
@@ -79,7 +79,7 @@ func ScrapingMatomesokuhou() ([]model.Article, error) {
 		article.MemberNames = append(article.MemberNames, categorySet.Find("dd.article-category2").Text())
 
 		// 時間を取得
-		article.DateTime = GetNow()
+		article.DateTime = now
 
 		// 画像取得
 		article.PicUrl, ok = articleBox.Find("img.pict").Attr("src")
@@ -98,7 +98,7 @@ func ScrapingMatomesokuhou() ([]model.Article, error) {
 }
 
 // ScrapingMatomesokuhou は日向坂まとめキングダムの記事をスクレイピングする関数
-func ScrapingMatomekingdom() ([]model.Article, error) {
+func ScrapingMatomekingdom(now string) ([]model.Article, error) {
 
 	targetUrl := "http://hiragana46matome.com/"
 	doc, err := goquery.NewDocument(targetUrl)
@@ -153,7 +153,7 @@ func ScrapingMatomekingdom() ([]model.Article, error) {
 }
 
 // ScrapingMatomesokuhou は日向速報の記事をスクレイピングする関数
-func ScrapingHinatasokuhou() ([]model.Article, error) {
+func ScrapingHinatasokuhou(now string) ([]model.Article, error) {
 
 	targetUrl := "http://hinatasoku.blog.jp/"
 	doc, err := goquery.NewDocument(targetUrl)
@@ -206,16 +206,16 @@ func ScrapingHinatasokuhou() ([]model.Article, error) {
 func GetNow() string {
 	t := time.Now()
 
-	month := formatDateTime(int(t.Month()))
-	day := formatDateTime(t.Day())
-	hour := formatDateTime(t.Hour())
+	month := FormatDateTime(int(t.Month()))
+	day := FormatDateTime(t.Day())
+	hour := FormatDateTime(t.Hour())
 
 	dateTime := strconv.Itoa(t.Year()) + "-" + month + "-" + day + "T" + hour + ":00:00Z"
 
 	return dateTime
 }
 
-func formatDateTime(dateTimeOne int) string {
+func FormatDateTime(dateTimeOne int) string {
 	dateTimeOneStr := ""
 	if dateTimeOne < 10 {
 		dateTimeOneStr = "0" + strconv.Itoa(dateTimeOne)

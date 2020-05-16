@@ -25,8 +25,11 @@ func (au articleS3UseCase) CollectArticle() error {
 
 	var err error
 
+	// 現在時刻の取得
+	now := GetNow()
+
 	// 記事のスクレイピング
-	articles, err := Scraping()
+	articles, err := Scraping(now)
 	if err != nil {
 		return nil
 	}
@@ -58,41 +61,41 @@ func (au articleS3UseCase) CollectArticle() error {
 	// 記事データをs3に保存
 	au.articleRepository.UploadArticle()
 
-	// // メンバーカウントcsvを取得
-	// err = au.memberCountRepository.DownloadCSV()
-	// if err != nil {
-	// 	return err
-	// }
+	// メンバーカウントcsvを取得
+	err = au.memberCountRepository.DownloadCSV()
+	if err != nil {
+		return err
+	}
 
-	// // 直近3日間のまとめ記事へのメンバーの出現回数をカウント
-	// err = au.memberCountRepository.InsertMemberCountInThreeDays()
-	// if err != nil {
-	// 	return err
-	// }
+	// 直近3日間のまとめ記事へのメンバーの出現回数をカウント
+	err = au.memberCountRepository.InsertMemberCountInThreeDays(now)
+	if err != nil {
+		return err
+	}
 
-	// // メンバーカウントcsvをアップロード
-	// err = au.memberCountRepository.UploadCSV()
-	// if err != nil {
-	// 	return err
-	// }
+	// メンバーカウントcsvをアップロード
+	err = au.memberCountRepository.UploadCSV()
+	if err != nil {
+		return err
+	}
 
-	// // ワードカウントcsvを取得
-	// err = au.wordCountRepository.DownloadCSV()
-	// if err != nil {
-	// 	return err
-	// }
+	// ワードカウントcsvを取得
+	err = au.wordCountRepository.DownloadCSV()
+	if err != nil {
+		return err
+	}
 
-	// // 直近3日間のまとめ記事への単語の出現回数をカウント
-	// err = au.wordCountRepository.InsertWordCountInThreeDays()
-	// if err != nil {
-	// 	return err
-	// }
+	// 直近3日間のまとめ記事への単語の出現回数をカウント
+	err = au.wordCountRepository.InsertWordCountInThreeDays(now)
+	if err != nil {
+		return err
+	}
 
-	// // ワードカウントcsvをアップロード
-	// err = au.wordCountRepository.UploadCSV()
-	// if err != nil {
-	// 	return err
-	// }
+	// ワードカウントcsvをアップロード
+	err = au.wordCountRepository.UploadCSV()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
