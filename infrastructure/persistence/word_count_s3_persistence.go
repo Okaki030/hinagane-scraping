@@ -4,9 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -22,7 +20,7 @@ type wordCountS3Presistence struct {
 	Sess *session.Session
 }
 
-// NewWordCountPersistence はwordCountPresistence型のインスタンスを生成するための関数
+// NewWordCountS3Persistence はwordCountPresistence型のインスタンスを生成するための関数
 func NewWordCountS3Persistence(sess *session.Session) repository.WordCountS3Repository {
 	return &wordCountS3Presistence{
 		Sess: sess,
@@ -30,7 +28,7 @@ func NewWordCountS3Persistence(sess *session.Session) repository.WordCountS3Repo
 }
 
 // InsertWordCountInThreeDays は直近3日間のまとめ記事へのワードの出現回数をカウントするためのメソッド
-func (wcp wordCountS3Presistence) InsertWordCountInThreeDays() error {
+func (wcp wordCountS3Presistence) InsertWordCountInThreeDays(now string) error {
 
 	fmt.Println("insert word count start")
 	var err error
@@ -74,12 +72,23 @@ func (wcp wordCountS3Presistence) InsertWordCountInThreeDays() error {
 
 	writer := csv.NewWriter(file)
 
-	// 集計
-	t := time.Now()
+	// 単語ごとの3日寛の記事数を集計
 	var wordCount string
 	for _, word := range uniqWordSlice {
+
+		// 記事の存在を確認
+		exist, err := wcp.ConfirmExistenceWordCount(word, now)
+		if err != nil {
+			return err
+		}
+		// 記事が存在したら終わり
+		if exist == true {
+			continue
+		}
+
+		// 単語ごとの3日寛の記事数を取得
 		objectKey = "./data/article/articles.csv"
-		sql := "SELECT count(*) FROM S3Object where words like '%" + word + "%'"
+		sql := "SELECT count(*) FROM S3Object WHERE DATE_DIFF(hour, TO_TIMESTAMP(dateTime), DATE_ADD(hour,9,UTCNOW())) <= 72 AND  words like '%" + word + "%'"
 		fmt.Println(sql)
 		wordCount, err = wcp.SelectS3CSV(objectKey, sql)
 		if err != nil {
@@ -89,10 +98,7 @@ func (wcp wordCountS3Presistence) InsertWordCountInThreeDays() error {
 
 		wordCountContent := []string{
 			word,
-			strconv.Itoa(t.Year()),
-			strconv.Itoa(int(t.Month())),
-			strconv.Itoa(t.Day()),
-			strconv.Itoa(t.Hour()),
+			now,
 			wordCount,
 		}
 		fmt.Println(wordCountContent)
@@ -101,6 +107,49 @@ func (wcp wordCountS3Presistence) InsertWordCountInThreeDays() error {
 	writer.Flush()
 
 	return nil
+}
+
+func (wcp wordCountS3Presistence) ConfirmExistenceWordCount(wordName string, now string) (bool, error) {
+
+	fmt.Println("confirm membercount start")
+	sql := "SELECT name FROM S3Object WHERE name='" + wordName + "' AND dateTime='" + now + "' LIMIT 1"
+	fmt.Println(sql)
+	svc := s3.New(wcp.Sess)
+
+	params := &s3.SelectObjectContentInput{
+		Bucket:          aws.String("hinagane"),
+		Key:             aws.String("./data/word_count/word-count.csv"),
+		ExpressionType:  aws.String(s3.ExpressionTypeSql),
+		Expression:      aws.String(sql),
+		RequestProgress: &s3.RequestProgress{},
+		InputSerialization: &s3.InputSerialization{
+			CompressionType: aws.String("NONE"),
+			CSV: &s3.CSVInput{
+				FileHeaderInfo: aws.String(s3.FileHeaderInfoUse),
+			},
+		},
+		OutputSerialization: &s3.OutputSerialization{
+			CSV: &s3.CSVOutput{},
+		},
+	}
+
+	resp, err := svc.SelectObjectContent(params)
+	if err != nil {
+		return false, err
+	}
+	defer resp.EventStream.Close()
+
+	for event := range resp.EventStream.Events() {
+		// 取得できたか判定する
+		s, ok := event.(*s3.StatsEvent)
+		if ok {
+			if int(*s.Details.BytesReturned) > 0 {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }
 
 func (wcp wordCountS3Presistence) SelectS3CSV(objectKey string, sql string) (string, error) {

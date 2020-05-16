@@ -4,10 +4,7 @@ package model
 type Article struct {
 	Name         string
 	Url          string
-	Year         int
-	Month        int
-	Day          int
-	Hour         int
+	DateTime     string
 	MemberNames  []string
 	Words        []string
 	SiteId       int

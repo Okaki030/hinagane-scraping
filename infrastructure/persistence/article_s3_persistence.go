@@ -70,7 +70,6 @@ func (ap articleS3Persistence) InsertArticle(article model.Article, words []stri
 		return false, err
 	}
 	defer file.Close()
-
 	writer := csv.NewWriter(file)
 
 	// ファイル情報取得
@@ -79,21 +78,15 @@ func (ap articleS3Persistence) InsertArticle(article model.Article, words []stri
 		return false, err
 	}
 
-	// ファイルサイズを表示
-	fmt.Println(fileinfo.Size())
-
 	// ファイルに何も書き込まれていないときにヘッダー名をcsvに書き込む
 	if fileinfo.Size() == 0 {
 		var header = []string{
 			"name",
 			"url",
-			"year",
-			"month",
-			"day",
-			"hour",
+			"dateTime",
 			"memberNames",
 			"words",
-			"siteId",
+			"siteID",
 			"s3PicUrl",
 		}
 		writer.Write(header)
@@ -103,10 +96,7 @@ func (ap articleS3Persistence) InsertArticle(article model.Article, words []stri
 	var articleContent = []string{
 		article.Name,
 		article.Url,
-		strconv.Itoa(article.Year),
-		strconv.Itoa(article.Month),
-		strconv.Itoa(article.Day),
-		strconv.Itoa(article.Hour),
+		article.DateTime,
 		memberNamesStr,
 		wordsStr,
 		strconv.Itoa(article.SiteId),
@@ -212,6 +202,7 @@ func (ap articleS3Persistence) DownloadArticle() error {
 		Key:    aws.String(objectKey),
 	})
 	if err != nil {
+		fmt.Println("era- ")
 		return err
 	}
 
